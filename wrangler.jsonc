@@ -1,0 +1,16 @@
+// Cloudflare deployment: static site from dist/ plus the shared-song API.
+// Build with `npm run build`, deploy with `npx wrangler deploy`.
+{
+  // Must match the Worker's name in the Cloudflare dashboard.
+  "name": "junecagan-dev",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SONG", "class_name": "SongRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SongRoom"] }]
+}
