@@ -1,6 +1,6 @@
 // All of the site's copy lives here. Edit this file to update the site.
 
-export type TrackId = 'about' | 'experience' | 'projects' | 'skills' | 'education' | 'contact'
+export type TrackId = 'about' | 'experience' | 'projects' | 'papers' | 'education' | 'contact'
 
 export interface Track {
   id: TrackId
@@ -13,7 +13,7 @@ export const TRACKS: Track[] = [
   { id: 'about', label: 'About', machine: 'INTRO' },
   { id: 'experience', label: 'Experience', machine: 'WORK' },
   { id: 'projects', label: 'Projects', machine: 'BUILD' },
-  { id: 'skills', label: 'Skills', machine: 'STACK' },
+  { id: 'papers', label: 'Papers', machine: 'PRINT' },
   { id: 'education', label: 'Education', machine: 'STUDY' },
   { id: 'contact', label: 'Contact', machine: 'SEND' },
 ]
@@ -23,9 +23,9 @@ export const profile = {
   role: 'Software Engineer',
   tagline: 'Systems, real-time audio, and computational geometry.',
   summary:
-    'Computer science student at the University of Maryland (B.S. May 2027, minor in Linguistics). ' +
-    'I like software where correctness and timing both matter: I optimized a trading engine in C++ at Tradeweb, ' +
-    'researched geometric algorithms in the Hilbert metric, and build synthesizers in C++ and Rust.',
+    'I study computer science at the University of Maryland and like software where correctness and timing both matter. ' +
+    'So far that has meant tuning a trading engine at Tradeweb, publishing geometric algorithms at SoCG 2026, ' +
+    'and building synthesizers in C++ and Rust. This page is one of them: press Play.',
   availability: 'Open to full-time software engineering roles starting 2027.',
   location: 'College Park, MD',
   email: 'junecagan@gmail.com',
@@ -35,131 +35,110 @@ export const profile = {
   facts: [
     { k: 'Latest', v: 'Distributed Systems Engineering Intern, Tradeweb' },
     { k: 'Degree', v: 'B.S. Computer Science, UMD — May 2027' },
-    { k: 'Based', v: 'College Park, MD' },
+    { k: 'Published', v: 'Two papers at SoCG 2026' },
     { k: 'Works in', v: 'C++, Rust, Python, OCaml, TypeScript' },
   ],
 }
 
-export interface Role {
+/** One row on the Experience, Projects, or Papers screen. */
+export interface Entry {
   title: string
-  org: string
-  place: string
-  dates: string
-  short: string
-  bullets: string[]
-  tags: string[]
+  /** Short line above the title: where and when. */
+  meta: string
+  /** One sentence. */
+  summary: string
+  /** Author list for papers. */
+  byline?: string
+  tags?: string[]
+  links?: { label: string; url: string }[]
 }
 
-export const experience: Role[] = [
+export const experience: Entry[] = [
   {
     title: 'Distributed Systems Engineering Intern',
-    org: 'Tradeweb',
-    place: 'New York, NY',
-    dates: 'Jun 2026 – Aug 2026',
-    short: 'Tradeweb',
-    bullets: [
-      'Optimized the algorithm powering the Sweep-AME engine, increasing total notional by up to 1.5% in internal testing and simulation.',
-      'Used CMake, CTest, and GDB to build, test, and debug C++ implementations.',
-      'Expanded unit test coverage to stress-test optimized implementations across diverse inputs and edge cases.',
-    ],
-    tags: ['C++', 'CMake', 'CTest', 'GDB'],
+    meta: 'Tradeweb · New York · Summer 2026',
+    summary:
+      'Optimized the algorithm behind the Sweep-AME engine in C++, lifting total notional by up to 1.5% in internal testing and simulation.',
+    tags: ['C++', 'CMake', 'GDB'],
   },
   {
-    title: 'REU-CAAR Fellow',
-    org: 'University of Maryland, Department of Computer Science',
-    place: 'College Park, MD',
-    dates: 'Jun 2025 – Aug 2025',
-    short: 'REU-CAAR',
-    bullets: [
-      'Conducted research on geometric algorithms for machine learning and quantum computing applications.',
-      'Formulated new algorithms for building geometric data structures, such as Voronoi diagrams and Delaunay triangulations, in the Hilbert metric space.',
-      'Worked closely with one researcher to develop software that visualizes algorithms in multiple non-Euclidean metrics.',
-    ],
-    tags: ['Algorithms', 'Computational geometry', 'JavaScript'],
+    title: 'REU-CAAR Research Fellow',
+    meta: 'University of Maryland · Summer 2025',
+    summary:
+      'Developed new algorithms for Voronoi diagrams and Delaunay triangulations in the Hilbert metric and built the software that visualizes them, work later published at SoCG 2026.',
+    tags: ['Computational geometry', 'JavaScript'],
   },
   {
-    title: 'Undergraduate Teaching Assistant',
-    org: 'University of Maryland, Department of Computer Science',
-    place: 'College Park, MD',
-    dates: 'Jan 2025 – Present',
-    short: 'UMD CMSC330',
-    bullets: [
-      'Teaching assistant for CMSC330, which teaches programming paradigms such as functional programming in OCaml and memory safety through Rust.',
-      'Organized and developed programming exercises for over 850 students, covering higher-order functions, finite automata, parsing, interpreters, type-checking, and garbage collection.',
-      'Lead weekly discussion sections, reinforcing core concepts and working through programming exercises with over 30 students.',
-    ],
-    tags: ['OCaml', 'Rust', 'Teaching'],
+    title: 'Teaching Assistant, CMSC330',
+    meta: 'University of Maryland · 2025 – now',
+    summary:
+      'Teach functional programming in OCaml and memory safety in Rust, writing programming exercises for a course of 850+ students and leading a weekly discussion section.',
+    tags: ['OCaml', 'Rust'],
   },
 ]
 
-export interface Project {
-  name: string
-  blurb: string
-  stack: string[]
-  bullets: string[]
-  url: string
-  note?: string
-}
-
-export const projects: Project[] = [
+export const projects: Entry[] = [
   {
-    name: 'Voronoise',
-    blurb: 'Geometric percussion synth — VST3 and standalone.',
-    stack: ['C++', 'JUCE', 'CMake', 'GoogleTest'],
-    bullets: [
-      'A synthesizer plugin in which balls bounce off user-placed geometric structures — Voronoi diagrams or hand-drawn lines and shapes — and each collision plays a note through a built-in wavetable or sample engine.',
-      'Moved the physics engine to the real-time audio thread with lock-free queues and no memory allocation, cutting note timing jitter from up to 24 ms to sample-accurate.',
-      'Built with Claude Code: wrote the specs, reviewed and debugged generated C++, and used 85 GoogleTest unit and audio-timing tests to verify timing and audio output.',
-    ],
-    url: 'https://github.com/jrcagan/voronoise',
+    title: 'Voronoise',
+    meta: 'VST3 + standalone synth',
+    summary:
+      'A percussion synth where balls bounce off Voronoi diagrams and hand-drawn shapes and every collision plays a note, with sample-accurate timing from a lock-free physics engine on the audio thread.',
+    tags: ['C++', 'JUCE', 'CMake'],
+    links: [{ label: 'Source', url: 'https://github.com/jrcagan/voronoise' }],
   },
   {
-    name: 'Hilbert Metric Visualizer',
-    blurb: 'k-th order Voronoi diagrams in the Hilbert metric.',
-    stack: ['JavaScript', 'Node.js', 'Express', 'Canvas API'],
-    bullets: [
-      'Made for REU-CAAR 2025 to explore non-Euclidean geometries and algorithms, including bisectors built from conic sections and a partition tree for point location.',
-      'Worked on data structures, object and algorithm design, and user interaction.',
-      'Used Node.js and Express for the backend and the Canvas API for graphics.',
+    title: 'Hilbert Metric Visualizer',
+    meta: 'Research software · with Andrew Wagger',
+    summary:
+      'An interactive tool for drawing k-th order Voronoi diagrams in the Hilbert metric, built for REU-CAAR 2025 and presented at SoCG 2026.',
+    tags: ['JavaScript', 'Canvas'],
+    links: [
+      { label: 'Try it', url: 'https://andrew.wagger.net/hilbert/' },
+      { label: 'Source', url: 'https://github.com/anwagger/Hilbert_K_Voronoi' },
     ],
-    url: 'https://github.com/anwagger/Hilbert_K_Voronoi',
-    note: 'With Andrew Wagger',
   },
   {
-    name: 'Pulsar',
-    blurb: 'A synthesizer in Rust.',
-    stack: ['Rust'],
-    bullets: [
-      'Practice in audio programming: a synthesizer written from scratch in Rust, split into separate synth and GUI crates.',
-    ],
-    url: 'https://github.com/jrcagan/pulsar',
+    title: 'Pulsar',
+    meta: 'Synth in Rust',
+    summary: 'A synthesizer written from scratch in Rust to learn audio programming.',
+    tags: ['Rust'],
+    links: [{ label: 'Source', url: 'https://github.com/jrcagan/pulsar' }],
   },
   {
-    name: 'DirectionGuesser',
-    blurb: 'Android app in Kotlin.',
-    stack: ['Kotlin', 'Android'],
-    bullets: ['Team Android app built in Kotlin for CMSC436 at the University of Maryland.'],
-    url: 'https://github.com/yuwex/DirectionGuesser',
-    note: 'Team project',
+    title: 'DirectionGuesser',
+    meta: 'Android app · team project',
+    summary: 'An Android app built in Kotlin with a team for UMD’s CMSC436.',
+    tags: ['Kotlin'],
+    links: [{ label: 'Source', url: 'https://github.com/yuwex/DirectionGuesser' }],
   },
 ]
 
-export const skills: { group: string; items: string[] }[] = [
+export const papers: Entry[] = [
   {
-    group: 'Languages',
-    items: ['Python', 'C', 'C++', 'Rust', 'OCaml', 'Java', 'x86 Assembly', 'Racket', 'Go', 'Kotlin', 'SQL'],
+    title: 'Visualizing Higher Order Structures, Overlap Regions, and Clustering in the Hilbert Geometry',
+    meta: 'SoCG 2026 · Media Exposition',
+    summary:
+      'Interactive software for higher-order Voronoi diagrams, Delaunay mosaics, and clustering in the Hilbert polygonal metric, with a proof that k-th order Voronoi cells are not always star-shaped.',
+    byline:
+      'Hridhaan Banerjee, Soren Brown, June Cagan, Auguste H. Gezalyan, Megan Hunleth, Veena Kailad, Chaewoon Kyoung, Rowan Shigeno, Yasmine Tajeddin, Andrew Wagger, Kelin Zhu, David M. Mount',
+    links: [
+      { label: 'Paper', url: 'https://doi.org/10.4230/LIPIcs.SoCG.2026.100' },
+      { label: 'Video', url: 'https://youtu.be/yhJn--3Qgks' },
+      { label: 'Software', url: 'https://andrew.wagger.net/hilbert/' },
+    ],
   },
   {
-    group: 'Web',
-    items: ['JavaScript', 'TypeScript', 'HTML', 'CSS', 'Node.js', 'Express', 'React', 'MongoDB', 'REST APIs'],
-  },
-  {
-    group: 'Tools',
-    items: ['Git', 'Docker', 'CMake', 'JUnit', 'npm', 'Claude Code', 'Codex'],
-  },
-  {
-    group: 'Systems',
-    items: ['Ubuntu', 'Windows 10/11'],
+    title: 'Proximity Alert: Ipelets for Neighborhood Graphs and Clustering',
+    meta: 'SoCG 2026 · Media Exposition',
+    summary:
+      'A free set of Lua extensions for the Ipe drawing editor that visualize neighborhood graphs and clustering algorithms, from Gabriel and Yao graphs to DBSCAN and k-means.',
+    byline:
+      'Gitan Balogh, June Cagan, Bea Fatima, Auguste H. Gezalyan, Danesh Sivakumar, Arushi Srinivasan, Yixuan Sun, Vahe Zaprosyan, David M. Mount',
+    links: [
+      { label: 'Paper', url: 'https://doi.org/10.4230/LIPIcs.SoCG.2026.99' },
+      { label: 'Video', url: 'https://youtu.be/NQr-SY1x2qc' },
+      { label: 'Source', url: 'https://github.com/Otcavo/Ipelets-Full-Library' },
+    ],
   },
 ]
 

@@ -423,57 +423,82 @@ a {
   border-color: var(--accent);
 }
 
-/* ---------- Browser (experience / projects) ---------- */
+/* ---------- Entries (experience / projects / papers) ---------- */
 
-.browser {
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entry {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 30px;
-  height: 100%;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--oled-line);
 }
-.browser-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-right: 20px;
-  border-right: 1px solid var(--oled-line);
+.entry:first-child {
+  padding-top: 0;
 }
-.browser-item {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
-  text-align: left;
-  font-family: var(--mono);
+.entry:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.entry-num {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--oled-dim);
+  padding-top: 1px;
+}
+.entry .eyebrow {
+  margin-bottom: 6px;
+}
+.entry-title {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.entry-summary {
+  margin: 8px 0 0;
+  max-width: 76ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #dedede;
+}
+.entry-byline {
+  margin: 8px 0 0;
+  max-width: 76ch;
+  font-size: 11.5px;
+  line-height: 1.55;
   color: var(--oled-dim);
 }
-.browser-item:hover {
+.entry-byline b {
   color: var(--oled-ink);
-}
-.browser-item.is-active {
-  background: var(--oled-ink);
-  color: var(--oled);
-}
-.browser-num {
-  font-family: var(--pixel);
-  font-size: 10px;
-  padding-top: 3px;
-}
-.browser-text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.browser-primary {
-  font-size: 13px;
   font-weight: 600;
 }
-.browser-secondary {
-  font-size: 11px;
-  opacity: 0.75;
+.entry-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 12px;
 }
-.browser-detail {
-  animation: page-in 140ms steps(3);
+.entry-foot .chips {
+  margin: 0;
+}
+.entry-link {
+  font-family: var(--pixel);
+  font-size: 11px;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--accent);
+  border-bottom: 1px solid transparent;
+}
+.entry-link:hover {
+  border-color: var(--accent);
 }
 
 .detail-title {
@@ -534,26 +559,6 @@ a {
   font-size: 11.5px;
   letter-spacing: 0.04em;
   color: #dedede;
-}
-
-.skill-row {
-  display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
-  align-items: baseline;
-  gap: 16px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--oled-line);
-}
-.skill-row:first-child {
-  padding-top: 0;
-}
-.skill-row .eyebrow,
-.skill-row .chips {
-  margin: 0;
-}
-.skill-row .chips li {
-  font-size: 13px;
-  padding: 5px 11px;
 }
 
 .contact-list {

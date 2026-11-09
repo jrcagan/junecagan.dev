@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
+import { useEffect, useRef, type MutableRefObject, type ReactNode } from 'react'
 import type { Engine } from '../audio/engine'
-import { TRACKS, education, experience, profile, projects, skills, type TrackId } from '../data/content'
+import { TRACKS, education, experience, papers, profile, projects, type Entry, type TrackId } from '../data/content'
 
 interface ScreenProps {
   track: number
@@ -47,9 +47,9 @@ export function Screen({ track, playing, bpm, engine, onSelect, shared, overlay,
 
 const PAGES: Record<TrackId, (onSelect: (track: number) => void) => ReactNode> = {
   about: (onSelect) => <About onSelect={onSelect} />,
-  experience: () => <Experience />,
-  projects: () => <Projects />,
-  skills: () => <Skills />,
+  experience: () => <Entries items={experience} />,
+  projects: () => <Entries items={projects} />,
+  papers: () => <Entries items={papers} />,
   education: () => <Education />,
   contact: () => <Contact />,
 }
@@ -95,103 +95,45 @@ function About({ onSelect }: { onSelect: (track: number) => void }) {
   )
 }
 
-function Browser<T>({
-  items,
-  label,
-  primary,
-  secondary,
-  children,
-}: {
-  items: T[]
-  label: string
-  primary: (item: T) => string
-  secondary: (item: T) => string
-  children: (item: T) => ReactNode
-}) {
-  const [index, setIndex] = useState(0)
+/** A numbered list of one-sentence entries: used for experience, projects, and papers. */
+function Entries({ items }: { items: Entry[] }) {
   return (
-    <div className="page browser">
-      <div className="browser-list" role="tablist" aria-label={label}>
-        {items.map((item, i) => (
-          <button
-            key={primary(item)}
-            role="tab"
-            aria-selected={i === index}
-            className={`browser-item${i === index ? ' is-active' : ''}`}
-            onClick={() => setIndex(i)}
-          >
-            <span className="browser-num">{String(i + 1).padStart(2, '0')}</span>
-            <span className="browser-text">
-              <span className="browser-primary">{primary(item)}</span>
-              <span className="browser-secondary">{secondary(item)}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="browser-detail" role="tabpanel" key={index}>
-        {children(items[index])}
-      </div>
-    </div>
-  )
-}
-
-function Experience() {
-  return (
-    <Browser items={experience} label="Roles" primary={(r) => r.short} secondary={(r) => r.dates}>
-      {(r) => (
-        <>
-          <p className="eyebrow">{r.dates}</p>
-          <h3 className="detail-title">{r.title}</h3>
-          <p className="detail-sub">
-            {r.org} · {r.place}
-          </p>
-          <ul className="bullets">
-            {r.bullets.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-          <Chips items={r.tags} />
-        </>
-      )}
-    </Browser>
-  )
-}
-
-function Projects() {
-  return (
-    <Browser items={projects} label="Projects" primary={(p) => p.name} secondary={(p) => p.stack.slice(0, 2).join(' · ')}>
-      {(p) => (
-        <>
-          <p className="eyebrow">{p.note ?? 'Personal project'}</p>
-          <h3 className="detail-title">{p.name}</h3>
-          <p className="detail-sub">{p.blurb}</p>
-          <ul className="bullets">
-            {p.bullets.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-          <Chips items={p.stack} />
-          <div className="actions">
-            <a className="btn btn-primary" href={p.url} target="_blank" rel="noreferrer">
-              View source ↗
-            </a>
+    <ol className="page entries">
+      {items.map((e, i) => (
+        <li className="entry" key={e.title}>
+          <span className="entry-num">{String(i + 1).padStart(2, '0')}</span>
+          <div className="entry-main">
+            <p className="eyebrow">{e.meta}</p>
+            <h3 className="entry-title">{e.title}</h3>
+            <p className="entry-summary">{e.summary}</p>
+            {e.byline && <p className="entry-byline">{highlightName(e.byline)}</p>}
+            {(e.tags || e.links) && (
+              <div className="entry-foot">
+                {e.tags && <Chips items={e.tags} />}
+                {e.links?.map((l) => (
+                  <a className="entry-link" key={l.url} href={l.url} target="_blank" rel="noreferrer">
+                    {l.label} ↗
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
-        </>
-      )}
-    </Browser>
+        </li>
+      ))}
+    </ol>
   )
 }
 
-function Skills() {
+/** Marks the site owner's name in an author list. */
+function highlightName(byline: string): ReactNode {
+  const [before, after] = byline.split(profile.name)
+  if (after === undefined) return byline
   return (
-    <div className="page skills">
-      {skills.map((s) => (
-        <div className="skill-row" key={s.group}>
-          <h3 className="eyebrow">{s.group}</h3>
-          <Chips items={s.items} />
-        </div>
-      ))}
-    </div>
+    <>
+      {before}
+      <b>{profile.name}</b>
+      {after}
+    </>
   )
 }
 
