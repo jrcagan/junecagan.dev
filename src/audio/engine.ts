@@ -74,8 +74,24 @@ export function patternLength(patterns: boolean[][]): number {
   return STEPS
 }
 
-// Semitone offset each step plays relative to the track's TUNE. The harmony
-// changes once per page and every chord is minor: E minor, A minor, E minor, B minor.
+/**
+ * Per-step overrides ("parameter locks"). locks[track][step] is null, or one value
+ * per parameter for that step alone, where NO_LOCK means "use the track's knob".
+ */
+export type Locks = (number[] | null)[][]
+export const NO_LOCK = -1
+
+export const emptyLocks = (): Locks =>
+  Array.from({ length: DEFAULT_PATTERNS.length }, () => Array<number[] | null>(TOTAL_STEPS).fill(null))
+
+/** The parameters a step actually plays: the track's knobs with the step's locks on top. */
+export function stepParams(params: number[], lock: number[] | null): number[] {
+  return lock ? params.map((v, i) => (lock[i] === NO_LOCK ? v : lock[i])) : params
+}
+
+// The default melodies, written as semitones above each track's TUNE and turned
+// into TUNE locks below. The harmony changes once per page and every chord is
+// minor: E minor, A minor, E minor, B minor.
 const ROOTS = [0, -7, 0, -5]
 const CHORDS = [
   [0, 3, 7, 12],
@@ -83,7 +99,7 @@ const CHORDS = [
   [0, 3, 7, 12],
   [-2, 2, 7, 10],
 ]
-// The lead melody, one row per page; steps between notes hold the previous note.
+// The lead melody, one row per page.
 const MELODY: number[][] = [
   [7, 7, 7, 7, 7, 7, 3, 3, 7, 7, 7, 10, 10, 10, 7, 7],
   [8, 8, 8, 8, 8, 8, 5, 5, 8, 8, 8, 12, 12, 12, 8, 8],
@@ -103,6 +119,15 @@ const NOTES: number[][] = [
   perStep((page, step) => CHORDS[page][ARP_ORDER[step % ARP_ORDER.length]]),
   perStep(() => 0),
 ]
+
+export const DEFAULT_LOCKS: Locks = DEFAULT_PATTERNS.map((row, t) =>
+  row.map((on, i) => {
+    if (!on || NOTES[t][i] === 0) return null
+    const lock = Array<number>(PARAMS.length).fill(NO_LOCK)
+    lock[P.tune] = DEFAULT_PARAMS[t][P.tune] + NOTES[t][i]
+    return lock
+  }),
+)
 
 const LEVEL_TRIM: Record<Machine, number> = {
   'GND SIN': 1,
@@ -145,6 +170,7 @@ export interface EngineState {
   params: number[][]
   machines: number[]
   bpm: number
+  locks: Locks
   volume: number
 }
 
@@ -229,7 +255,7 @@ export class Engine {
 
   // Look-ahead scheduler: queue every step that starts within the next 100 ms.
   private tick() {
-    const { patterns, params, machines, bpm } = this.read()
+    const { patterns, params, machines, bpm, locks } = this.read()
     const length = patternLength(patterns)
     const stepDur = 60 / bpm / 4
     this.delay.delayTime.setTargetAtTime(stepDur * 3, this.ctx.currentTime, 0.05)
@@ -239,7 +265,7 @@ export class Engine {
       const step = this.step
       const time = this.nextTime
       patterns.forEach((row, t) => {
-        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], params[t], NOTES[t][step], time)
+        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], stepParams(params[t], locks[t][step]), time)
       })
       window.setTimeout(
         () => this.running && this.onStep(step),
@@ -250,9 +276,9 @@ export class Engine {
     }
   }
 
-  private trigger(machine: Machine, p: number[], offset: number, t: number) {
+  private trigger(machine: Machine, p: number[], t: number) {
     const ctx = this.ctx
-    const note = p[P.tune] + offset
+    const note = p[P.tune]
     const freq = 440 * 2 ** ((note - 69) / 12)
     const color = p[P.color] / 127
     const mod = p[P.mod] / 127

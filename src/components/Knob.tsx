@@ -9,9 +9,13 @@ interface KnobProps {
   /** Text shown under the knob; defaults to the raw value. */
   display?: string
   size?: number
+  /** Marks the value as a per-step override rather than the track's own value. */
+  locked?: boolean
+  /** Called on double-click. */
+  onReset?: () => void
 }
 
-export function Knob({ label, value, onChange, min = 0, max = 127, display, size = 54 }: KnobProps) {
+export function Knob({ label, value, onChange, min = 0, max = 127, display, size = 54, locked, onReset }: KnobProps) {
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; value: number } | null>(null)
   const latest = useRef({ value, onChange })
@@ -36,7 +40,7 @@ export function Knob({ label, value, onChange, min = 0, max = 127, display, size
   }, [min, max])
 
   return (
-    <div className="knob">
+    <div className={`knob${locked ? ' is-locked' : ''}`} title={locked ? 'Set on the selected steps only. Double-click to remove.' : undefined}>
       <div
         ref={ref}
         className="knob-dial"
@@ -58,6 +62,7 @@ export function Knob({ label, value, onChange, min = 0, max = 127, display, size
         }}
         onPointerUp={() => (drag.current = null)}
         onPointerCancel={() => (drag.current = null)}
+        onDoubleClick={onReset}
         onKeyDown={(e) => {
           const big = Math.max(1, Math.round(range / 12))
           const delta =

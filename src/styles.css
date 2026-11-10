@@ -643,6 +643,21 @@ a {
   color: var(--accent);
 }
 
+.knob.is-locked .knob-dial {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 10px 14px -4px rgba(0, 0, 0, 0.75);
+}
+.knob.is-locked .knob-cap i {
+  background: var(--accent);
+}
+.knob.is-locked .knob-value {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ---------- Right column ---------- */
 
 .controls {
@@ -723,7 +738,7 @@ a {
 
 .transport {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   margin-top: auto;
 }
@@ -757,6 +772,14 @@ a {
 .fn-play.is-active {
   border-color: var(--accent);
   box-shadow: 0 0 14px -2px var(--accent);
+}
+
+.fn-select.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fn-select.is-active svg {
+  stroke: var(--accent-ink);
 }
 
 /* ---------- Trig keys ---------- */
@@ -796,6 +819,45 @@ a {
 .trig.is-on.is-now {
   box-shadow: 0 0 16px -2px var(--hot);
   border-color: var(--hot);
+}
+
+.screen-foot-hint.is-live {
+  color: var(--accent);
+}
+
+/* Selected for per-step edits. */
+.trig.is-sel,
+.trig.is-sel.is-now {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 16px -4px var(--accent);
+}
+/* The playhead on a selected step: a white box around the blue key. */
+.trig.is-sel.is-now {
+  border-color: var(--print);
+  box-shadow:
+    0 0 0 2px var(--print),
+    0 0 18px 0 var(--accent);
+}
+.trig.is-sel span {
+  border-color: var(--accent-ink);
+}
+/* Marks a step that has values of its own. */
+.trig {
+  position: relative;
+}
+.trig-lock {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.trig.is-sel .trig-lock {
+  background: var(--accent-ink);
 }
 
 /* ---------- Footer ---------- */

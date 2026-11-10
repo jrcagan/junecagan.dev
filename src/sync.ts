@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Locks } from './audio/engine'
 
 export interface Song {
   patterns: boolean[][]
   params: number[][]
   machines: number[]
   bpm: number
+  locks: Locks
 }
 
 /** A saved composition as listed by the server: an emoji and a date, never a name. */
@@ -16,7 +18,7 @@ export interface Composition {
 
 const clientId = Math.random().toString(36).slice(2)
 
-const pick = ({ patterns, params, machines, bpm }: Song): Song => ({ patterns, params, machines, bpm })
+const pick = ({ patterns, params, machines, bpm, locks }: Song): Song => ({ patterns, params, machines, bpm, locks })
 
 /**
  * Keeps the song in step with the server: loads the saved song on arrival, sends

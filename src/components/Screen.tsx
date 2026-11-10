@@ -10,12 +10,14 @@ interface ScreenProps {
   onSelect: (track: number) => void
   /** True when the song is saved on the server and shared with other visitors. */
   shared: boolean
+  /** Replaces the keyboard hint in the footer (used while selecting steps). */
+  hint?: string
   /** When set, replaces the section page (used for the save / browse menu). */
   overlay?: ReactNode
   overlayTitle?: string
 }
 
-export function Screen({ track, playing, bpm, engine, onSelect, shared, overlay, overlayTitle }: ScreenProps) {
+export function Screen({ track, playing, bpm, engine, onSelect, shared, hint, overlay, overlayTitle }: ScreenProps) {
   const t = TRACKS[track]
   return (
     <section className="screen" aria-label={t.label}>
@@ -38,7 +40,7 @@ export function Screen({ track, playing, bpm, engine, onSelect, shared, overlay,
         <span>
           {String(track + 1).padStart(2, '0')}/{String(TRACKS.length).padStart(2, '0')}
         </span>
-        <span className="screen-foot-hint">KEYS 1–6 SELECT · SPACE PLAY</span>
+        <span className={`screen-foot-hint${hint ? ' is-live' : ''}`}>{hint ?? 'KEYS 1–6 SELECT · SPACE PLAY'}</span>
         <span className={`screen-sync${shared ? ' is-on' : ''}`}>{shared ? '● Shared song' : 'Local song'}</span>
       </footer>
     </section>

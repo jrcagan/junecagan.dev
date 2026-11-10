@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_BPM,
+  DEFAULT_LOCKS,
   DEFAULT_MACHINES,
   DEFAULT_PARAMS,
   DEFAULT_PATTERNS,
   Engine,
   MACHINE_NAMES,
+  NO_LOCK,
   PAGES,
   PARAMS,
   STEPS,
   formatParam,
+  stepParams,
   type EngineState,
+  type Locks,
 } from './audio/engine'
 import { Knob } from './components/Knob'
 import { Screen } from './components/Screen'
@@ -20,6 +24,11 @@ import { useSharedSong, type Song } from './sync'
 
 const clone = (rows: number[][]) => rows.map((r) => [...r])
 const clonePatterns = (rows: boolean[][]) => rows.map((r) => [...r])
+const cloneLocks = (rows: Locks): Locks => rows.map((r) => r.map((lock) => lock && [...lock]))
+
+/** Copies a table, replacing the values in one row. */
+const mapRow = <T,>(rows: T[][], row: number, f: (value: T, i: number) => T): T[][] =>
+  rows.map((r, t) => (t === row ? r.map(f) : r))
 
 function trackFromHash(): number {
   const i = TRACKS.findIndex((t) => t.id === window.location.hash.slice(1))
@@ -31,6 +40,7 @@ export default function App() {
   const [patterns, setPatterns] = useState(() => clonePatterns(DEFAULT_PATTERNS))
   const [params, setParams] = useState(() => clone(DEFAULT_PARAMS))
   const [machines, setMachines] = useState(() => [...DEFAULT_MACHINES])
+  const [locks, setLocks] = useState(() => cloneLocks(DEFAULT_LOCKS))
   const [bpm, setBpm] = useState(DEFAULT_BPM)
   const [volume, setVolume] = useState(100)
   const [playing, setPlaying] = useState(false)
@@ -39,24 +49,30 @@ export default function App() {
   /** Pattern page shown on the step keys. */
   const [page, setPage] = useState(0)
   const [menu, setMenu] = useState<MenuMode | null>(null)
+  /** Select mode: pressing step keys selects them for per-step knob edits instead of toggling them. */
+  const [selecting, setSelecting] = useState(false)
+  /** Selected steps on the current track, most recently selected last. */
+  const [selected, setSelected] = useState<number[]>([])
 
   const engine = useRef<Engine | null>(null)
   // The audio scheduler reads the latest sequencer state through this ref.
-  const live = useRef<EngineState>({ patterns, params, machines, bpm, volume })
-  live.current = { patterns, params, machines, bpm, volume }
+  const live = useRef<EngineState>({ patterns, params, machines, bpm, locks, volume })
+  live.current = { patterns, params, machines, bpm, locks, volume }
 
-  const song: Song = { patterns, params, machines, bpm }
+  const song: Song = { patterns, params, machines, bpm, locks }
   const applySong = useCallback((s: Song) => {
     setPatterns(s.patterns)
     setParams(s.params)
     setMachines(s.machines)
     setBpm(s.bpm)
+    setLocks(s.locks)
   }, [])
   const shared = useSharedSong(song, applySong)
 
   const selectTrack = useCallback((i: number) => {
     setTrack(i)
     setMenu(null)
+    setSelected([])
     window.history.replaceState(null, '', `#${TRACKS[i].id}`)
   }, [])
 
@@ -91,6 +107,9 @@ export default function App() {
       const n = Number(e.key)
       if (n >= 1 && n <= TRACKS.length) {
         selectTrack(n - 1)
+      } else if (e.key === 'Escape') {
+        setSelecting(false)
+        setSelected([])
       } else if (e.code === 'Space' && !['BUTTON', 'A', 'INPUT'].includes(el.tagName)) {
         e.preventDefault()
         togglePlay()
@@ -107,16 +126,28 @@ export default function App() {
   const first = page * STEPS // index of the first step on the visible page
   const onPage = (i: number) => i >= first && i < first + STEPS
 
-  const setStepOn = (s: number, value: boolean) =>
-    setPatterns((prev) =>
-      prev[track][s] === value
-        ? prev
-        : prev.map((row, t) => (t === track ? row.map((on, i) => (i === s ? value : on)) : row)),
-    )
+  // Selected steps that are still switched on (another visitor may have removed some).
+  const sel = selected.filter((s) => patterns[track][s])
+  const isLocked = (p: number) => sel.some((s) => (locks[track][s]?.[p] ?? NO_LOCK) !== NO_LOCK)
+  // With steps selected, the knobs show the most recently selected step.
+  const shown = sel.length ? stepParams(params[track], locks[track][sel[sel.length - 1]]) : params[track]
 
-  // Press a step and drag across others to paint them all on (or all off,
-  // if the first step pressed was already on).
-  const paint = useRef<boolean | null>(null)
+  const setStepOn = (s: number, value: boolean) => {
+    setPatterns((prev) => (prev[track][s] === value ? prev : mapRow(prev, track, (on, i) => (i === s ? value : on))))
+    if (!value) {
+      // A step that is switched off loses its locks.
+      setLocks((prev) => (prev[track][s] ? mapRow(prev, track, (lock, i) => (i === s ? null : lock)) : prev))
+      setSelected((prev) => prev.filter((x) => x !== s))
+    }
+  }
+
+  const setStepSelected = (s: number, value: boolean) =>
+    setSelected((prev) => (value ? (prev.includes(s) ? prev : [...prev, s]) : prev.filter((x) => x !== s)))
+
+  // Press a step and drag across others to paint them all on (or all off, if the
+  // first step pressed was already on). In select mode, or with Shift held, the
+  // same gesture selects steps instead.
+  const paint = useRef<{ select: boolean; value: boolean } | null>(null)
   const stepAt = (x: number, y: number): number | null => {
     const key = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-step]')
     return key ? Number(key.dataset.step) : null
@@ -125,32 +156,89 @@ export default function App() {
     if (e.button !== 0) return
     const s = stepAt(e.clientX, e.clientY)
     if (s === null) return
-    paint.current = !patterns[track][s]
-    setStepOn(s, paint.current)
+    if (selecting || e.shiftKey) {
+      setSelecting(true)
+      paint.current = { select: true, value: !sel.includes(s) }
+      // Pressing an empty step places a note there and selects it.
+      setStepOn(s, true)
+      setStepSelected(s, paint.current.value)
+    } else {
+      paint.current = { select: false, value: !patterns[track][s] }
+      setStepOn(s, paint.current.value)
+    }
   }
   const paintMove = (e: React.PointerEvent) => {
-    if (paint.current === null) return
+    if (!paint.current) return
     const s = stepAt(e.clientX, e.clientY)
-    if (s !== null) setStepOn(s, paint.current)
+    if (s === null) return
+    if (!paint.current.select) setStepOn(s, paint.current.value)
+    else if (patterns[track][s]) setStepSelected(s, paint.current.value) // dragging only picks up existing notes
   }
   const paintEnd = () => (paint.current = null)
 
-  const setParam = (p: number, v: number) =>
-    setParams((prev) => prev.map((row, t) => (t === track ? row.map((old, i) => (i === p ? v : old)) : row)))
+  // With steps selected, a knob locks its value on those steps only. Otherwise it
+  // sets the track's value and moves every lock of that parameter by the same
+  // amount, so a locked melody transposes with TUNE instead of ignoring it.
+  const setParam = (p: number, v: number) => {
+    // Read and update the ref directly: several knob events can arrive between renders.
+    const now = live.current
+    let nextParams = now.params
+    let nextLocks: Locks
+    if (sel.length) {
+      nextLocks = mapRow(now.locks, track, (lock, i) => {
+        if (!sel.includes(i)) return lock
+        const next = lock ? [...lock] : Array<number>(PARAMS.length).fill(NO_LOCK)
+        next[p] = v
+        return next
+      })
+    } else {
+      const delta = v - now.params[track][p]
+      if (!delta) return
+      nextParams = mapRow(now.params, track, (old, i) => (i === p ? v : old))
+      nextLocks = mapRow(now.locks, track, (lock) =>
+        lock && lock[p] !== NO_LOCK
+          ? lock.map((x, i) => (i === p ? Math.min(127, Math.max(0, x + delta)) : x))
+          : lock,
+      )
+    }
+    live.current = { ...now, params: nextParams, locks: nextLocks }
+    setParams(nextParams)
+    setLocks(nextLocks)
+  }
+
+  /** Removes locks from the selected steps: one parameter, or all of them. */
+  const unlock = (p?: number) =>
+    setLocks((prev) =>
+      mapRow(prev, track, (lock, i) => {
+        if (!lock || !sel.includes(i) || p === undefined) return sel.includes(i) ? null : lock
+        const next = lock.map((x, k) => (k === p ? NO_LOCK : x))
+        return next.some((x) => x !== NO_LOCK) ? next : null
+      }),
+    )
+
+  const toggleSelecting = () => {
+    setSelecting(!selecting)
+    setSelected([])
+  }
 
   const cycleMachine = (dir: number) =>
     setMachines((prev) =>
       prev.map((m, t) => (t === track ? (m + dir + MACHINE_NAMES.length) % MACHINE_NAMES.length : m)),
     )
 
-  const clearPage = () =>
-    setPatterns((prev) => prev.map((row, t) => (t === track ? row.map((on, i) => (onPage(i) ? false : on)) : row)))
+  const clearPage = () => {
+    setPatterns((prev) => mapRow(prev, track, (on, i) => (onPage(i) ? false : on)))
+    setLocks((prev) => mapRow(prev, track, (lock, i) => (onPage(i) ? null : lock)))
+    setSelected((prev) => prev.filter((s) => !onPage(s)))
+  }
 
   const reset = () => {
     setPatterns(clonePatterns(DEFAULT_PATTERNS))
     setParams(clone(DEFAULT_PARAMS))
     setMachines([...DEFAULT_MACHINES])
     setBpm(DEFAULT_BPM)
+    setLocks(cloneLocks(DEFAULT_LOCKS))
+    setSelected([])
   }
 
   const playPage = step < 0 ? -1 : Math.floor(step / STEPS)
@@ -210,6 +298,13 @@ export default function App() {
           engine={engine}
           onSelect={selectTrack}
           shared={shared}
+          hint={
+            !selecting
+              ? undefined
+              : sel.length
+                ? `${sel.length} STEP${sel.length > 1 ? 'S' : ''} SELECTED · KNOBS CHANGE ONLY THESE`
+                : 'PRESS STEPS TO SELECT THEM'
+          }
           overlayTitle={menu === 'save' ? 'Save song' : 'Saved songs'}
           overlay={
             menu && (
@@ -228,9 +323,11 @@ export default function App() {
             <Knob
               key={name}
               label={name}
-              value={params[track][p]}
-              display={formatParam(p, params[track][p])}
+              value={shown[p]}
+              display={formatParam(p, shown[p])}
+              locked={isLocked(p)}
               onChange={(v) => setParam(p, v)}
+              onReset={() => unlock(p)}
             />
           ))}
         </div>
@@ -280,12 +377,31 @@ export default function App() {
             <span>{playing ? 'Stop' : 'Play'}</span>
           </div>
           <div className="fn">
-            <button className="key fn-key" onClick={clearPage} aria-label="Clear this track's steps on this page">
+            <button
+              className={`key fn-key fn-select${selecting ? ' is-active' : ''}`}
+              onClick={toggleSelecting}
+              aria-pressed={selecting}
+              aria-label="Select steps to change their sound one by one"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5.5" y="5.5" width="13" height="13" rx="2" strokeDasharray="3.2 3.3" />
+              </svg>
+            </button>
+            <span>Select</span>
+          </div>
+          <div className="fn">
+            <button
+              className="key fn-key"
+              onClick={sel.length ? () => unlock() : clearPage}
+              aria-label={
+                sel.length ? 'Remove the per-step values from the selected steps' : "Clear this track's steps on this page"
+              }
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="6.5" />
               </svg>
             </button>
-            <span>Clear</span>
+            <span>{sel.length ? 'Unlock' : 'Clear'}</span>
           </div>
           <div className="fn">
             <button className="key fn-key" onClick={reset} aria-label="Reload the default song">
@@ -337,17 +453,25 @@ export default function App() {
         {Array.from({ length: STEPS }, (_, k) => {
           const s = first + k
           const on = patterns[track][s]
+          const picked = sel.includes(s)
+          const locked = on && locks[track][s] !== null
           return (
             <button
               key={k}
-              className={`key trig${on ? ' is-on' : ''}${s === step ? ' is-now' : ''}`}
+              className={`key trig${on ? ' is-on' : ''}${s === step ? ' is-now' : ''}${picked ? ' is-sel' : ''}`}
               aria-pressed={on}
-              aria-label={`Step ${k + 1}`}
+              aria-label={`Step ${k + 1}${picked ? ', selected' : ''}${locked ? ', has its own values' : ''}`}
               data-step={s}
               // Pointer presses are handled by the drag-paint handlers above;
               // this covers keyboard activation (Enter / Space), where detail is 0.
-              onClick={(e) => e.detail === 0 && setStepOn(s, !on)}
+              onClick={(e) => {
+                if (e.detail !== 0) return
+                if (!selecting) return setStepOn(s, !on)
+                setStepOn(s, true)
+                setStepSelected(s, !picked)
+              }}
             >
+              {locked && <i className="trig-lock" />}
               <span>{k + 1}</span>
             </button>
           )
@@ -357,7 +481,7 @@ export default function App() {
       <footer className="foot">
         <h2 className="foot-title">Some notes :D</h2>
         <span>
-          Each section is its own track. You can click the step keys to choose where you want notes across {PAGES} pages! Customize each sound using the knobs on each page{shared ? ', and your changes to the sounds and pattern will stay for the next visitor!' : '.'}
+          Each section of the site is its own track! You can click the step keys to choose where you want notes across {PAGES} pages. {shared ? 'Your changes to the sounds and pattern will stay for the next visitor!' : '.'}
         </span>
       </footer>
     </main>
