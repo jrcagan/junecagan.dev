@@ -21,11 +21,11 @@ export const TRACKS: Track[] = [
 export const profile = {
   name: 'June Cagan',
   role: 'Software Engineer',
-  tagline: 'Systems, real-time audio, and computational geometry.',
+  tagline: 'CS & TA @ UMD | Prev SWE Intern @ Tradeweb',
   summary:
-    'I study computer science at the University of Maryland and like software where correctness and timing both matter. ' +
+    'I study computer science at the University of Maryland and like software where correctness and efficiency matter. ' +
     'So far that has meant tuning a trading engine at Tradeweb, publishing geometric algorithms at SoCG 2026, ' +
-    'and building synthesizers in C++ and Rust. This page is one of them: press Play.',
+    'and building audio programs in C++ and Rust. In fact, this page is a synth! Just press play 😁',
   availability: 'Open to full-time software engineering roles starting 2027.',
   location: 'College Park, MD',
   email: 'junecagan@gmail.com',
@@ -56,24 +56,31 @@ export interface Entry {
 export const experience: Entry[] = [
   {
     title: 'Distributed Systems Engineering Intern',
-    meta: 'Tradeweb · New York · Summer 2026',
+    meta: 'Tradeweb · New York · June 2026 - August 2026',
     summary:
       'Optimized the algorithm behind the Sweep-AME engine in C++, lifting total notional by up to 1.5% in internal testing and simulation.',
     tags: ['C++', 'CMake', 'GDB'],
   },
   {
+     title: 'Teaching Assistant, CMSC330',
+     meta: 'University of Maryland · January 2025 – now',
+     summary:
+       'Teach functional programming in OCaml and memory safety in Rust, writing programming exercises for a course of 850+ students and leading a weekly discussion section.',
+     tags: ['OCaml', 'Rust'],
+  },
+  {
+    title: 'Student Initiated Course Facilitator, CMSC389B',
+    meta: 'University of Maryland · August 2025 – January 2026',
+    summary:
+      'Taught a weekly PL class to over a dozen students with two co-facilitators, creating projects for various languages including Go, Forth and J while utilizing docker to create autograders.',
+    tags: ['Go', 'J', 'Docker'],
+  },
+  {
     title: 'REU-CAAR Research Fellow',
-    meta: 'University of Maryland · Summer 2025',
+    meta: 'University of Maryland · June 2025 - August 2025',
     summary:
       'Developed new algorithms for Voronoi diagrams and Delaunay triangulations in the Hilbert metric and built the software that visualizes them, work later published at SoCG 2026.',
     tags: ['Computational geometry', 'JavaScript'],
-  },
-  {
-    title: 'Teaching Assistant, CMSC330',
-    meta: 'University of Maryland · 2025 – now',
-    summary:
-      'Teach functional programming in OCaml and memory safety in Rust, writing programming exercises for a course of 850+ students and leading a weekly discussion section.',
-    tags: ['OCaml', 'Rust'],
   },
 ]
 
@@ -91,7 +98,7 @@ export const projects: Entry[] = [
     meta: 'Research software · with Andrew Wagger',
     summary:
       'An interactive tool for drawing k-th order Voronoi diagrams in the Hilbert metric, built for REU-CAAR 2025 and presented at SoCG 2026.',
-    tags: ['JavaScript', 'Canvas'],
+    tags: ['JavaScript', 'Node.js', 'Canvas'],
     links: [
       { label: 'Try it', url: 'https://andrew.wagger.net/hilbert/' },
       { label: 'Source', url: 'https://github.com/anwagger/Hilbert_K_Voronoi' },

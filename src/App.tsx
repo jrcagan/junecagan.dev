@@ -356,10 +356,8 @@ export default function App() {
 
       <footer className="foot">
         <span>
-          Each section is a track. <b>Play</b> starts the pattern, the step keys rewrite it across {PAGES} pages, the
-          knobs shape the sound{shared ? ' — and your changes stay for the next visitor.' : '.'}
+          Each section is a track. Click the step keys to choose where you want notes across {PAGES} pages. Customize each sound using the knobs on each page{shared ? ', and your changes to the sounds and pattern will stay for the next visitor.' : '.'}
         </span>
-        <span>React · TypeScript · Web Audio</span>
       </footer>
     </main>
   )
