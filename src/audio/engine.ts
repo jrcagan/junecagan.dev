@@ -13,7 +13,7 @@ export type Machine = 'GND SIN' | 'GND NOIS' | 'SID' | 'SWAVE' | 'FM+' | 'DPRO' 
 export const MACHINE_NAMES: Machine[] = ['GND SIN', 'GND NOIS', 'SID', 'SWAVE', 'FM+', 'DPRO', 'VO']
 
 /** Machine on each of the six tracks in the default song. */
-export const DEFAULT_MACHINES: number[] = [0, 1, 2, 3, 4, 5]
+export const DEFAULT_MACHINES: number[] = [0, 1, 2, 3, 4, 1]
 
 // COLOR and MOD mean different things per machine:
 //   GND SIN   drive                 / pitch sweep
@@ -28,41 +28,40 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
 
 const P = { tune: 0, color: 1, mod: 2, decay: 3, cutoff: 4, reso: 5, delay: 6, level: 7 }
 
-export const DEFAULT_BPM = 124
+export const DEFAULT_BPM = 150
 
+// The default song is a hard trance loop in G minor: a driven four-on-the-floor
+// kick, offbeat hats, a rolling bass, a supersaw lead, an FM pluck arpeggio, and
+// a clap that turns into a roll at the end of the fourth page.
 //                                    TUNE COLOR MOD DECAY CUT  RESO DELAY LEVEL
 export const DEFAULT_PARAMS: number[][] = [
-  /* T1 GND SIN  kick  */ [33, 36, 92, 50, 84, 4, 0, 118],
-  /* T2 GND NOIS hat   */ [76, 92, 0, 13, 127, 0, 12, 44],
-  /* T3 SID      bass  */ [36, 34, 0, 40, 72, 62, 8, 84],
-  /* T4 SWAVE    stab  */ [60, 78, 0, 50, 90, 22, 64, 62],
-  /* T5 FM+      bell  */ [72, 60, 58, 72, 127, 0, 84, 54],
-  /* T6 DPRO     arp   */ [60, 28, 0, 30, 98, 34, 52, 52],
+  /* T1 GND SIN  kick  */ [31, 80, 100, 48, 90, 0, 0, 124],
+  /* T2 GND NOIS hat   */ [84, 100, 0, 20, 127, 0, 10, 46],
+  /* T3 SID      bass  */ [43, 40, 0, 24, 62, 50, 0, 96],
+  /* T4 SWAVE    lead  */ [67, 70, 0, 58, 112, 10, 78, 78],
+  /* T5 FM+      pluck */ [79, 40, 40, 34, 120, 0, 70, 50],
+  /* T6 GND NOIS clap  */ [64, 50, 0, 34, 108, 14, 22, 70],
 ]
 
-// The default song: a one-page groove repeated over four pages, with a few
-// steps added on later pages so the loop develops.
-const BASE: number[][] = [
-  [0, 4, 8, 12],
-  [2, 6, 10, 13, 14],
-  [0, 2, 3, 6, 8, 10, 11, 14],
-  [3, 6, 11],
-  [0, 7, 10, 14],
-  [1, 5, 7, 9, 13, 15],
-]
-// EXTRA[page][track] = steps added on that page.
-const EXTRA: number[][][] = [
-  [[], [], [], [], [], []],
-  [[14], [], [], [], [3], []],
-  [[], [0, 4, 8, 12], [], [14], [], []],
-  [[10, 14, 15], [], [12, 13], [], [], [3, 11]],
+const FLOOR = [0, 4, 8, 12]
+const OFFBEAT = [2, 6, 10, 14]
+const ROLLING = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15]
+const LEAD_STEPS = [0, 3, 6, 8, 11, 14]
+const PLUCK_SPARSE = [1, 2, 5, 7, 9, 10, 13, 15]
+const PLUCK_FULL = [1, 2, 4, 5, 7, 9, 10, 12, 13, 15]
+
+// SONG[track][page] = steps that are on.
+const SONG: number[][][] = [
+  [FLOOR, FLOOR, FLOOR, [0, 4, 8]], // the last kick drops out under the clap roll
+  [OFFBEAT, OFFBEAT, [...OFFBEAT, 7, 15], [...OFFBEAT, 7, 15]],
+  [ROLLING, ROLLING, ROLLING, ROLLING],
+  [LEAD_STEPS, LEAD_STEPS, LEAD_STEPS, LEAD_STEPS],
+  [PLUCK_SPARSE, PLUCK_SPARSE, PLUCK_FULL, PLUCK_FULL],
+  [[4, 12], [4, 12], [4, 12], [4, 8, 10, 12, 13, 14, 15]],
 ]
 
-export const DEFAULT_PATTERNS: boolean[][] = BASE.map((base, t) =>
-  Array.from({ length: TOTAL_STEPS }, (_, i) => {
-    const step = i % STEPS
-    return base.includes(step) || EXTRA[Math.floor(i / STEPS)][t].includes(step)
-  }),
+export const DEFAULT_PATTERNS: boolean[][] = SONG.map((pages) =>
+  Array.from({ length: TOTAL_STEPS }, (_, i) => pages[Math.floor(i / STEPS)].includes(i % STEPS)),
 )
 
 /** Steps the sequencer loops over: everything up to the last page that has a step on it. */
@@ -75,14 +74,34 @@ export function patternLength(patterns: boolean[][]): number {
   return STEPS
 }
 
-// Semitone offset each step plays relative to the track's TUNE (C minor); the same on every page.
+// Semitone offset each step plays relative to the track's TUNE. The harmony
+// changes once per page: G minor, E flat, B flat, F.
+const ROOTS = [0, -4, 3, -2]
+const CHORDS = [
+  [0, 3, 7, 12],
+  [-4, 0, 3, 8],
+  [-2, 3, 7, 10],
+  [-2, 2, 5, 10],
+]
+// The lead melody, one row per page; steps between notes hold the previous note.
+const MELODY: number[][] = [
+  [7, 7, 7, 7, 7, 7, 3, 3, 7, 7, 7, 10, 10, 10, 7, 7],
+  [8, 8, 8, 8, 8, 8, 3, 3, 8, 8, 8, 12, 12, 12, 8, 8],
+  [10, 10, 10, 10, 10, 10, 7, 7, 10, 10, 10, 15, 15, 15, 10, 10],
+  [14, 14, 14, 14, 14, 14, 10, 10, 14, 14, 14, 17, 17, 17, 12, 12],
+]
+const ARP_ORDER = [0, 1, 2, 3, 2, 1]
+
+const perStep = (note: (page: number, step: number) => number) =>
+  Array.from({ length: TOTAL_STEPS }, (_, i) => note(Math.floor(i / STEPS), i % STEPS))
+
 const NOTES: number[][] = [
-  new Array(STEPS).fill(0),
-  new Array(STEPS).fill(0),
-  [0, 0, 0, 12, 0, 0, 7, 0, 3, 0, 3, 15, 0, 0, 10, 0],
-  [7, 0, 0, 3, 0, 0, 5, 0, 0, 3, 0, 10, 0, 0, 7, 0],
-  [12, 0, 0, 7, 0, 0, 0, 10, 0, 0, 3, 0, 0, 0, 7, 0],
-  [0, 7, 0, 3, 0, 10, 0, 12, 0, 7, 0, 3, 0, 5, 0, 7],
+  perStep(() => 0),
+  perStep(() => 0),
+  perStep((page) => ROOTS[page]),
+  perStep((page, step) => MELODY[page][step]),
+  perStep((page, step) => CHORDS[page][ARP_ORDER[step % ARP_ORDER.length]]),
+  perStep(() => 0),
 ]
 
 const LEVEL_TRIM: Record<Machine, number> = {
@@ -220,7 +239,7 @@ export class Engine {
       const step = this.step
       const time = this.nextTime
       patterns.forEach((row, t) => {
-        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], params[t], NOTES[t][step % STEPS], time)
+        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], params[t], NOTES[t][step], time)
       })
       window.setTimeout(
         () => this.running && this.onStep(step),
