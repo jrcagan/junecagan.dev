@@ -63,14 +63,14 @@ export const experience: Entry[] = [
   },
   {
      title: 'Teaching Assistant, CMSC330',
-     meta: 'University of Maryland · January 2025 – now',
+     meta: 'University of Maryland · January 2025 - now',
      summary:
        'Teach functional programming in OCaml and memory safety in Rust, writing programming exercises for a course of 850+ students and leading a weekly discussion section.',
      tags: ['OCaml', 'Rust'],
   },
   {
     title: 'Student Initiated Course Facilitator, CMSC389B',
-    meta: 'University of Maryland · August 2025 – January 2026',
+    meta: 'University of Maryland · August 2025 - January 2026',
     summary:
       'Taught a weekly PL class to over a dozen students with two co-facilitators, creating projects for various languages including Go, Forth and J while utilizing docker to create autograders.',
     tags: ['Go', 'J', 'Docker'],
@@ -153,7 +153,7 @@ export const education = {
   school: 'University of Maryland, College Park',
   degree: 'B.S. in Computer Science',
   minor: 'Minor in Linguistics',
-  dates: 'Aug 2023 – May 2027',
+  dates: 'Aug 2023 - May 2027',
   gpa: '3.62',
   coursework: [
     'Data Structures',
