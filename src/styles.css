@@ -811,6 +811,15 @@ a {
   font-weight: 500;
   color: var(--print-dim);
 }
+.foot-title {
+  flex-basis: 100%;
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 .foot b {
   color: var(--accent);
   font-weight: 600;

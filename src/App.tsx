@@ -355,8 +355,9 @@ export default function App() {
       </div>
 
       <footer className="foot">
+        <h2 className="foot-title">Some notes :D</h2>
         <span>
-          Some notes :D Each section is its own track. You can click the step keys to choose where you want notes across {PAGES} pages! Customize each sound using the knobs on each page{shared ? ', and your changes to the sounds and pattern will stay for the next visitor!' : '.'}
+          Each section is its own track. You can click the step keys to choose where you want notes across {PAGES} pages! Customize each sound using the knobs on each page{shared ? ', and your changes to the sounds and pattern will stay for the next visitor!' : '.'}
         </span>
       </footer>
     </main>
