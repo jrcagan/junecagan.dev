@@ -28,18 +28,18 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
 
 const P = { tune: 0, color: 1, mod: 2, decay: 3, cutoff: 4, reso: 5, delay: 6, level: 7 }
 
-export const DEFAULT_BPM = 150
+export const DEFAULT_BPM = 119
 
-// The default song is a hard trance loop in G minor: a driven four-on-the-floor
+// The default song is a trance loop in E minor: a driven four-on-the-floor
 // kick, offbeat hats, a rolling bass, a supersaw lead, an FM pluck arpeggio, and
 // a clap that turns into a roll at the end of the fourth page.
 //                                    TUNE COLOR MOD DECAY CUT  RESO DELAY LEVEL
 export const DEFAULT_PARAMS: number[][] = [
-  /* T1 GND SIN  kick  */ [31, 80, 100, 48, 90, 0, 0, 124],
+  /* T1 GND SIN  kick  */ [28, 80, 100, 124, 123, 0, 0, 124],
   /* T2 GND NOIS hat   */ [84, 100, 0, 20, 127, 0, 10, 46],
-  /* T3 SID      bass  */ [43, 40, 0, 24, 62, 50, 0, 96],
-  /* T4 SWAVE    lead  */ [67, 70, 0, 58, 112, 10, 78, 78],
-  /* T5 FM+      pluck */ [79, 40, 40, 34, 120, 0, 70, 50],
+  /* T3 SID      bass  */ [40, 40, 0, 24, 62, 50, 0, 96],
+  /* T4 SWAVE    lead  */ [52, 99, 1, 85, 89, 79, 71, 77],
+  /* T5 FM+      pluck */ [76, 40, 40, 34, 120, 0, 70, 50],
   /* T6 GND NOIS clap  */ [64, 50, 0, 34, 108, 14, 22, 70],
 ]
 
@@ -55,7 +55,7 @@ const SONG: number[][][] = [
   [FLOOR, FLOOR, FLOOR, [0, 4, 8]], // the last kick drops out under the clap roll
   [OFFBEAT, OFFBEAT, [...OFFBEAT, 7, 15], [...OFFBEAT, 7, 15]],
   [ROLLING, ROLLING, ROLLING, ROLLING],
-  [LEAD_STEPS, LEAD_STEPS, LEAD_STEPS, LEAD_STEPS],
+  [[0, 6], [0, 6, 14], [0, 6, 14], LEAD_STEPS], // the lead fills in page by page
   [PLUCK_SPARSE, PLUCK_SPARSE, PLUCK_FULL, PLUCK_FULL],
   [[4, 12], [4, 12], [4, 12], [4, 8, 10, 12, 13, 14, 15]],
 ]
@@ -75,20 +75,20 @@ export function patternLength(patterns: boolean[][]): number {
 }
 
 // Semitone offset each step plays relative to the track's TUNE. The harmony
-// changes once per page: G minor, E flat, B flat, F.
-const ROOTS = [0, -4, 3, -2]
+// changes once per page and every chord is minor: E minor, A minor, E minor, B minor.
+const ROOTS = [0, -7, 0, -5]
 const CHORDS = [
   [0, 3, 7, 12],
-  [-4, 0, 3, 8],
-  [-2, 3, 7, 10],
-  [-2, 2, 5, 10],
+  [0, 5, 8, 12],
+  [0, 3, 7, 12],
+  [-2, 2, 7, 10],
 ]
 // The lead melody, one row per page; steps between notes hold the previous note.
 const MELODY: number[][] = [
   [7, 7, 7, 7, 7, 7, 3, 3, 7, 7, 7, 10, 10, 10, 7, 7],
-  [8, 8, 8, 8, 8, 8, 3, 3, 8, 8, 8, 12, 12, 12, 8, 8],
-  [10, 10, 10, 10, 10, 10, 7, 7, 10, 10, 10, 15, 15, 15, 10, 10],
-  [14, 14, 14, 14, 14, 14, 10, 10, 14, 14, 14, 17, 17, 17, 12, 12],
+  [8, 8, 8, 8, 8, 8, 5, 5, 8, 8, 8, 12, 12, 12, 8, 8],
+  [12, 12, 12, 12, 12, 12, 7, 7, 12, 12, 12, 15, 15, 15, 12, 12],
+  [10, 10, 10, 10, 10, 10, 7, 7, 10, 10, 10, 14, 14, 14, 8, 8],
 ]
 const ARP_ORDER = [0, 1, 2, 3, 2, 1]
 
