@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_BPM,
+  DEFAULT_KEY,
   DEFAULT_LOCKS,
   DEFAULT_MACHINES,
   DEFAULT_PARAMS,
@@ -12,6 +13,11 @@ import {
   PARAMS,
   STEPS,
   formatParam,
+  isPitched,
+  keyNames,
+  moveInKey,
+  scaleSteps,
+  snapToKey,
   stepParams,
   type EngineState,
   type Locks,
@@ -42,6 +48,9 @@ export default function App() {
   const [machines, setMachines] = useState(() => [...DEFAULT_MACHINES])
   const [locks, setLocks] = useState(() => cloneLocks(DEFAULT_LOCKS))
   const [bpm, setBpm] = useState(DEFAULT_BPM)
+  const [key, setKeyState] = useState(DEFAULT_KEY)
+  /** Whether the Key knob names the scale by its relative minor. Only the label changes. */
+  const [minorLabel, setMinorLabel] = useState(false)
   const [volume, setVolume] = useState(100)
   const [playing, setPlaying] = useState(false)
   /** Step being played across all pages (0-63), or -1 when stopped. */
@@ -56,15 +65,16 @@ export default function App() {
 
   const engine = useRef<Engine | null>(null)
   // The audio scheduler reads the latest sequencer state through this ref.
-  const live = useRef<EngineState>({ patterns, params, machines, bpm, locks, volume })
-  live.current = { patterns, params, machines, bpm, locks, volume }
+  const live = useRef<EngineState>({ patterns, params, machines, bpm, key, locks, volume })
+  live.current = { patterns, params, machines, bpm, key, locks, volume }
 
-  const song: Song = { patterns, params, machines, bpm, locks }
+  const song: Song = { patterns, params, machines, bpm, key, locks }
   const applySong = useCallback((s: Song) => {
     setPatterns(s.patterns)
     setParams(s.params)
     setMachines(s.machines)
     setBpm(s.bpm)
+    setKeyState(s.key)
     setLocks(s.locks)
   }, [])
   const shared = useSharedSong(song, applySong)
@@ -126,11 +136,13 @@ export default function App() {
   const first = page * STEPS // index of the first step on the visible page
   const onPage = (i: number) => i >= first && i < first + STEPS
 
-  // Selected steps that are still switched on (another visitor may have removed some).
-  const sel = selected.filter((s) => patterns[track][s])
+  const sel = selected
   const isLocked = (p: number) => sel.some((s) => (locks[track][s]?.[p] ?? NO_LOCK) !== NO_LOCK)
   // With steps selected, the knobs show the most recently selected step.
-  const shown = sel.length ? stepParams(params[track], locks[track][sel[sel.length - 1]]) : params[track]
+  const raw = sel.length ? stepParams(params[track], locks[track][sel[sel.length - 1]]) : params[track]
+  // TUNE on a pitched machine is held to the song's key, so show the note that actually plays.
+  const pitched = isPitched(machines[track])
+  const shown = pitched ? raw.map((v, p) => (p === 0 ? snapToKey(v, key) : v)) : raw
 
   const setStepOn = (s: number, value: boolean) => {
     setPatterns((prev) => (prev[track][s] === value ? prev : mapRow(prev, track, (on, i) => (i === s ? value : on))))
@@ -158,9 +170,8 @@ export default function App() {
     if (s === null) return
     if (selecting || e.shiftKey) {
       setSelecting(true)
+      // Selecting never switches a step on or off.
       paint.current = { select: true, value: !sel.includes(s) }
-      // Pressing an empty step places a note there and selects it.
-      setStepOn(s, true)
       setStepSelected(s, paint.current.value)
     } else {
       paint.current = { select: false, value: !patterns[track][s] }
@@ -171,8 +182,8 @@ export default function App() {
     if (!paint.current) return
     const s = stepAt(e.clientX, e.clientY)
     if (s === null) return
-    if (!paint.current.select) setStepOn(s, paint.current.value)
-    else if (patterns[track][s]) setStepSelected(s, paint.current.value) // dragging only picks up existing notes
+    if (paint.current.select) setStepSelected(s, paint.current.value)
+    else setStepOn(s, paint.current.value)
   }
   const paintEnd = () => (paint.current = null)
 
@@ -182,6 +193,9 @@ export default function App() {
   const setParam = (p: number, v: number) => {
     // Read and update the ref directly: several knob events can arrive between renders.
     const now = live.current
+    const tuned = p === 0 && isPitched(now.machines[track])
+    // TUNE moves from one note of the key to the next, in the direction the knob turned.
+    if (tuned) v = snapToKey(v, now.key, Math.sign(v - shown[p]))
     let nextParams = now.params
     let nextLocks: Locks
     if (sel.length) {
@@ -192,16 +206,38 @@ export default function App() {
         return next
       })
     } else {
-      const delta = v - now.params[track][p]
-      if (!delta) return
-      nextParams = mapRow(now.params, track, (old, i) => (i === p ? v : old))
+      const old = now.params[track][p]
+      if (v === old) return
+      // Locked notes move by the same number of scale steps, so the melody stays in key.
+      const steps = tuned ? scaleSteps(old, v, now.key) : 0
+      const shift = (x: number) => (tuned ? moveInKey(x, steps, now.key) : Math.min(127, Math.max(0, x + v - old)))
+      nextParams = mapRow(now.params, track, (x, i) => (i === p ? v : x))
       nextLocks = mapRow(now.locks, track, (lock) =>
-        lock && lock[p] !== NO_LOCK
-          ? lock.map((x, i) => (i === p ? Math.min(127, Math.max(0, x + delta)) : x))
-          : lock,
+        lock && lock[p] !== NO_LOCK ? lock.map((x, i) => (i === p ? shift(x) : x)) : lock,
       )
     }
     live.current = { ...now, params: nextParams, locks: nextLocks }
+    setParams(nextParams)
+    setLocks(nextLocks)
+  }
+
+  // Changing the key moves every pitched note in the song by the same interval
+  // and lands it in the new scale.
+  const setKey = (next: number) => {
+    const now = live.current
+    const delta = next - now.key
+    if (!delta) return
+    const move = (note: number) => snapToKey(Math.min(127, Math.max(0, note + delta)), next)
+    const nextParams = now.params.map((row, t) =>
+      isPitched(now.machines[t]) ? row.map((x, i) => (i === 0 ? move(x) : x)) : row,
+    )
+    const nextLocks = now.locks.map((row, t) =>
+      isPitched(now.machines[t])
+        ? row.map((lock) => (lock && lock[0] !== NO_LOCK ? lock.map((x, i) => (i === 0 ? move(x) : x)) : lock))
+        : row,
+    )
+    live.current = { ...now, key: next, params: nextParams, locks: nextLocks }
+    setKeyState(next)
     setParams(nextParams)
     setLocks(nextLocks)
   }
@@ -237,6 +273,7 @@ export default function App() {
     setParams(clone(DEFAULT_PARAMS))
     setMachines([...DEFAULT_MACHINES])
     setBpm(DEFAULT_BPM)
+    setKeyState(DEFAULT_KEY)
     setLocks(cloneLocks(DEFAULT_LOCKS))
     setSelected([])
   }
@@ -271,8 +308,19 @@ export default function App() {
 
       <div className="side">
         <div className="side-knobs">
-          <Knob label="Tempo" value={bpm} min={60} max={180} onChange={setBpm} />
-          <Knob label="Volume" value={volume} onChange={setVolume} />
+          <Knob label="Tempo" value={bpm} min={60} max={180} size={46} onChange={setBpm} />
+          <Knob label="Volume" value={volume} size={46} onChange={setVolume} />
+          <Knob
+            label="Key"
+            value={key}
+            min={0}
+            max={11}
+            size={46}
+            display={minorLabel ? keyNames(key).minor : keyNames(key).major}
+            onDisplayClick={() => setMinorLabel(!minorLabel)}
+            displayHint={`Show as ${minorLabel ? keyNames(key).major : keyNames(key).minor}`}
+            onChange={setKey}
+          />
         </div>
         <nav className="tracks" aria-label="Sections">
           {TRACKS.map((t, i) => (
@@ -454,7 +502,7 @@ export default function App() {
           const s = first + k
           const on = patterns[track][s]
           const picked = sel.includes(s)
-          const locked = on && locks[track][s] !== null
+          const locked = locks[track][s] !== null
           return (
             <button
               key={k}
@@ -466,9 +514,8 @@ export default function App() {
               // this covers keyboard activation (Enter / Space), where detail is 0.
               onClick={(e) => {
                 if (e.detail !== 0) return
-                if (!selecting) return setStepOn(s, !on)
-                setStepOn(s, true)
-                setStepSelected(s, !picked)
+                if (selecting) setStepSelected(s, !picked)
+                else setStepOn(s, !on)
               }}
             >
               {locked && <i className="trig-lock" />}

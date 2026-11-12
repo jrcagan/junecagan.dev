@@ -8,6 +8,9 @@ interface KnobProps {
   max?: number
   /** Text shown under the knob; defaults to the raw value. */
   display?: string
+  /** Makes the value text a button (used to flip the key label between major and minor). */
+  onDisplayClick?: () => void
+  displayHint?: string
   size?: number
   /** Marks the value as a per-step override rather than the track's own value. */
   locked?: boolean
@@ -15,7 +18,7 @@ interface KnobProps {
   onReset?: () => void
 }
 
-export function Knob({ label, value, onChange, min = 0, max = 127, display, size = 54, locked, onReset }: KnobProps) {
+export function Knob({ label, value, onChange, min = 0, max = 127, display, onDisplayClick, displayHint, size = 54, locked, onReset }: KnobProps) {
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; value: number } | null>(null)
   const latest = useRef({ value, onChange })
@@ -78,7 +81,13 @@ export function Knob({ label, value, onChange, min = 0, max = 127, display, size
         </div>
       </div>
       <div className="knob-label">{label}</div>
-      <div className="knob-value">{display ?? value}</div>
+      {onDisplayClick ? (
+        <button className="knob-value knob-value-button" onClick={onDisplayClick} aria-label={displayHint} title={displayHint}>
+          {display ?? value}
+        </button>
+      ) : (
+        <div className="knob-value">{display ?? value}</div>
+      )}
     </div>
   )
 }

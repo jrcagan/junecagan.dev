@@ -6,6 +6,8 @@ export interface Song {
   params: number[][]
   machines: number[]
   bpm: number
+  /** Tonic of the song's major scale, 0 = C ... 11 = B. */
+  key: number
   locks: Locks
 }
 
@@ -18,7 +20,14 @@ export interface Composition {
 
 const clientId = Math.random().toString(36).slice(2)
 
-const pick = ({ patterns, params, machines, bpm, locks }: Song): Song => ({ patterns, params, machines, bpm, locks })
+const pick = ({ patterns, params, machines, bpm, key, locks }: Song): Song => ({
+  patterns,
+  params,
+  machines,
+  bpm,
+  key,
+  locks,
+})
 
 /**
  * Keeps the song in step with the server: loads the saved song on arrival, sends

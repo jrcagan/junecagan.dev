@@ -30,6 +30,56 @@ const P = { tune: 0, color: 1, mod: 2, decay: 3, cutoff: 4, reso: 5, delay: 6, l
 
 export const DEFAULT_BPM = 119
 
+/** Tonic of the song's major scale, 0 = C ... 11 = B. The default song is in G major (E minor). */
+export const DEFAULT_KEY = 7
+
+const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
+const inKey = (note: number, key: number) => MAJOR_SCALE.includes((((note - key) % 12) + 12) % 12)
+
+/**
+ * The closest note in the key's major scale. dir picks which way to look:
+ * 1 = at or above, -1 = at or below, 0 = nearest (the lower one on a tie).
+ */
+export function snapToKey(note: number, key: number, dir = 0): number {
+  for (let d = 0; d < 12; d++) {
+    const below = note - d
+    const above = note + d
+    if (dir <= 0 && below >= 0 && inKey(below, key)) return below
+    if (dir >= 0 && above <= 127 && inKey(above, key)) return above
+  }
+  // Ran off the end of the range: take the nearest note in the other direction.
+  return snapToKey(Math.min(127, Math.max(0, note)), key, -dir)
+}
+
+/** Moves a note up or down the key's scale by a number of scale steps. */
+export function moveInKey(note: number, steps: number, key: number): number {
+  let n = snapToKey(note, key)
+  for (let i = 0; i < Math.abs(steps); i++) {
+    const next = n + Math.sign(steps)
+    if (next < 0 || next > 127) break
+    n = snapToKey(next, key, Math.sign(steps))
+  }
+  return n
+}
+
+/** Scale steps from one note to another (both snapped to the key first). */
+export function scaleSteps(from: number, to: number, key: number): number {
+  const a = snapToKey(from, key)
+  const b = snapToKey(to, key)
+  let steps = 0
+  for (let n = Math.min(a, b) + 1; n <= Math.max(a, b); n++) if (inKey(n, key)) steps++
+  return b >= a ? steps : -steps
+}
+
+/** Machines whose TUNE is a musical pitch (noise uses it as texture, so it is left alone). */
+export const isPitched = (machine: number) => MACHINE_NAMES[machine] !== 'GND NOIS'
+
+/** Name of a key's major scale and of its relative minor. */
+export const keyNames = (key: number) => ({
+  major: `${NOTE_NAMES[key]} maj`,
+  minor: `${NOTE_NAMES[(key + 9) % 12]} min`,
+})
+
 // The default song is a trance loop in E minor: a driven four-on-the-floor
 // kick, offbeat hats, a rolling bass, a supersaw lead, an FM pluck arpeggio, and
 // a clap that turns into a roll at the end of the fourth page.
@@ -170,6 +220,7 @@ export interface EngineState {
   params: number[][]
   machines: number[]
   bpm: number
+  key: number
   locks: Locks
   volume: number
 }
@@ -255,7 +306,7 @@ export class Engine {
 
   // Look-ahead scheduler: queue every step that starts within the next 100 ms.
   private tick() {
-    const { patterns, params, machines, bpm, locks } = this.read()
+    const { patterns, params, machines, bpm, key, locks } = this.read()
     const length = patternLength(patterns)
     const stepDur = 60 / bpm / 4
     this.delay.delayTime.setTargetAtTime(stepDur * 3, this.ctx.currentTime, 0.05)
@@ -265,7 +316,7 @@ export class Engine {
       const step = this.step
       const time = this.nextTime
       patterns.forEach((row, t) => {
-        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], stepParams(params[t], locks[t][step]), time)
+        if (row[step]) this.trigger(MACHINE_NAMES[machines[t]], stepParams(params[t], locks[t][step]), key, time)
       })
       window.setTimeout(
         () => this.running && this.onStep(step),
@@ -276,9 +327,10 @@ export class Engine {
     }
   }
 
-  private trigger(machine: Machine, p: number[], t: number) {
+  private trigger(machine: Machine, p: number[], key: number, t: number) {
     const ctx = this.ctx
-    const note = p[P.tune]
+    // Pitched machines always play a note of the song's key.
+    const note = machine === 'GND NOIS' ? p[P.tune] : snapToKey(p[P.tune], key)
     const freq = 440 * 2 ** ((note - 69) / 12)
     const color = p[P.color] / 127
     const mod = p[P.mod] / 127

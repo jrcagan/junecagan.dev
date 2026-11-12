@@ -2,9 +2,11 @@
 // (worker/index.js): what a valid song looks like, and the limits on saving.
 // Visitors can only store numbers, booleans, and an emoji from a fixed list.
 //
-// A song is { patterns, params, machines, bpm, locks }. locks[track][step] is null,
+// A song is { patterns, params, machines, bpm, key, locks }. key is the tonic of
+// the major scale every pitched note is held to (0 = C ... 11 = B).
+// locks[track][step] is null,
 // or one value per parameter for that step alone, where -1 means "not locked: use
-// the track's knob". Only steps that are switched on keep locks.
+// the track's knob". A step that is off can hold locks too; they play once it is switched on.
 
 const TRACKS = 6
 const STEPS = 64 // 4 pages of 16
@@ -62,8 +64,8 @@ function legacyLocks(patterns, params) {
   )
 }
 
-/** Returns clean locks for already-checked patterns, or null if the shape is wrong. */
-function cleanLocks(locks, patterns) {
+/** Returns a clean copy of the locks, or null if the shape is wrong. */
+function cleanLocks(locks) {
   if (!Array.isArray(locks) || locks.length !== TRACKS) return null
   const out = []
   for (let t = 0; t < TRACKS; t++) {
@@ -77,7 +79,7 @@ function cleanLocks(locks, patterns) {
         continue
       }
       if (!Array.isArray(lock) || lock.length !== PARAMS || !lock.every((v) => int(v, -1, 127))) return null
-      clean.push(patterns[t][s] && lock.some((v) => v >= 0) ? [...lock] : null)
+      clean.push(lock.some((v) => v >= 0) ? [...lock] : null)
     }
     out.push(clean)
   }
@@ -89,6 +91,9 @@ export function validate(song) {
   if (!song || typeof song !== 'object') return null
   const { patterns, params, machines, bpm } = song
   if (!int(bpm, 60, 180)) return null
+  // Songs saved before the Key knob existed were written in G major (E minor).
+  const key = song.key === undefined ? 7 : song.key
+  if (!int(key, 0, 11)) return null
   if (!Array.isArray(patterns) || patterns.length !== TRACKS) return null
   if (!Array.isArray(params) || params.length !== TRACKS) return null
   if (!Array.isArray(machines) || machines.length !== TRACKS) return null
@@ -99,13 +104,14 @@ export function validate(song) {
   for (const row of params) {
     if (!Array.isArray(row) || row.length !== PARAMS || !row.every((v) => int(v, 0, 127))) return null
   }
-  const locks = song.locks === undefined ? legacyLocks(patterns, params) : cleanLocks(song.locks, patterns)
+  const locks = song.locks === undefined ? legacyLocks(patterns, params) : cleanLocks(song.locks)
   if (!locks) return null
   return {
     patterns: patterns.map((r) => [...r]),
     params: params.map((r) => [...r]),
     machines: [...machines],
     bpm,
+    key,
     locks,
   }
 }

@@ -166,7 +166,10 @@ a {
 .side-knobs {
   display: flex;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 4px;
+}
+.side-knobs .knob-value {
+  white-space: nowrap;
 }
 
 .tracks {
@@ -643,6 +646,17 @@ a {
   color: var(--accent);
 }
 
+.knob-value-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.knob-value-button:hover {
+  color: var(--print);
+}
 .knob.is-locked .knob-dial {
   box-shadow:
     0 0 0 2px var(--accent),
